@@ -156,8 +156,8 @@ var eventa = require('eventa')()
 
 // add some listeners which report to the console some common info:
 
-eventa.on('listening', function(server) {
-  console.log('server listening on', server.address())
+eventa.on('listening', function(event) {
+  console.log('server listening on', event.address)
 })
 
 eventa.on('closing', function(event) {
@@ -185,7 +185,7 @@ eventa.on('end', function(client) {
 eventa.load(
   './db-connect',         // try to connect to a database
   './server-create',      // start a server socket listening
-  './client-connections', // listen for client connections
+  './client-connections', // handle new client connections
   './decoder',            // decode client data events
   './transformer',        // transform data into documents for the DB
   './db-update'           // update the DB with the new documents
@@ -204,9 +204,9 @@ module.exports = function(eventa) {
 
   eventa.on('db', function (event) {
     db = event.object
-    closeDb = function() { db.close() }
-    eventa.once('error', closeDb)
-    eventa.once('closed', closeDb)
+    function closeDb() { db.close() }
+    eventa.on('error', closeDb, null, 1)
+    eventa.on('closed', closeDb, null, 1)
   })
 }
 
@@ -215,7 +215,7 @@ module.exports = function(eventa) {
 
   eventa.on('db', function() {
 
-    var net = require 'net'
+    var net = require('net')
       , server = net.createServer(eventor.accept(['client']))
       , port = process.env.LISTEN_PORT || 4321
       , host = process.env.LISTEN_HOST || 'localhost'
@@ -251,11 +251,11 @@ As usual, the CoffeeScript source file **lib/index.coffee** is transpiled to cre
 
 That JavaScript file is then used to produce minified and universal module versions.
 
-type | min | universal | file
------------------------------------------------
-ES5  | no  | no        | **lib/index.js**
-ES5  | no  | yes       | **lib/umd.js**
-ES5  | yes | yes       | **lib/umd.min.js**
+| type | min | universal | file                 |
+|:----:|:---:|:---------:|:---------------------|
+| ES5  | no  | no        | **lib/index.js**     |
+| ES5  | no  | yes       | **lib/umd.js**       |
+| ES5  | yes | yes       | **lib/umd.min.js**   |
 
 
 These versions are made available via [unpkg.com](http://unpkg.com/eventa@0.1.0).
