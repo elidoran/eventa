@@ -7,5 +7,8 @@ node_js:
 
 script: npm run travis
 
-after_success:
-  - 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
+# not until I fix the coffee-coverage issue: it doesn't allow excluding files.
+# i'm using a custom version locally which allows that and more.
+# so, i'll publish coverage locally for now.
+# after_success:
+#  - 'cat ./coverage/lcov.info | ./node_modules/.bin/coveralls'
