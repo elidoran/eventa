@@ -248,6 +248,15 @@ module.exports = function(eventa) {
 ```
 
 
+## Cleanup
+
+It's possible to build up empty info about events no longer in use with zero listeners.
+
+Fix that by running `eventa.cleanup()`.
+
+Use is very dependent on your application's needs, so, I leave it to you to determine when, if ever, you need to run this.
+
+
 ## Project Source and Distribution
 
 As usual, the CoffeeScript source file **lib/index.coffee** is transpiled to create **lib/index.js**.
