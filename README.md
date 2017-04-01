@@ -6,6 +6,9 @@
 
 Simple advanced central event communicator.
 
+An event emitter with extra methods to manage events flowing between multiple emitters.
+It helps handle errors and emitting results for listeners to react to.
+
 
 ## Install
 
