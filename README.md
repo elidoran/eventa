@@ -61,8 +61,9 @@ eventa.on('e', function(){}, {some:'context'})
 eventa.start()
 
 // 2. load()
-// easily load in local modules. they'll receive the instance of the
-// eventa as an argument, and optionally, an options object.
+// easily load in local modules or published packages.
+// they'll receive the instance of the eventa as an argument,
+// and optionally, an options object.
 // break up the code into modules exporting a function which
 // receives the eventa and adds their own listeners and code to emit events.
 // provide:
@@ -71,7 +72,16 @@ eventa.start()
 //  3. an object with a `fn` property containing the function,
 //     may also have an `options` property which will be the second arg.
 //  4. an array containing any of the above three
-// shown above.
+eventa.load('./local/module')
+eventa.load('published-package')
+eventa.load(function (eventa) { eventa.on('blah', function(){})})
+// this looks odd with both supplied here.
+// imagine you received the function from a require/import call.
+// or, imagine the options are provided to you from elsewhere.
+eventa.load({
+  fn: function (eventa, options) { /* blah */ },
+  options: { some:'options object'}
+})
 
 // 3. forward()
 // communicate between emitters.
@@ -79,6 +89,8 @@ eventa.start()
 // optionally with a different event name.
 // this will forward 'some event' to `anotherEmitter` as 'diff event'.
 // the third param is optional. Leave it out and the same event name is used.
+// Note the order: event name, emitter, alt name.
+// "forwarding" forwards an eventa event to the other emitter.
 eventa.forward('some event', anotherEmitter, 'diff event')
 
 // 4. watch()
@@ -93,6 +105,9 @@ eventa.forward('some event', anotherEmitter, 'diff event')
 // a different emitter is a reason to emit your own event with different
 // args. Such as a socket 'end' event leading to emitting an event
 // to tell something else what to do now with info about that client.
+// Note the order: other emitter, event name, creator, alt name.
+// It's different than forward(), opposite, because they are opposites.
+// "watch" listens to another emitter for some event to use.
 eventa.watch(anotherEmitter, 'for some event', null, 'diff event')
 // this will cause the eventa to emit the event with those args.
 eventa.watch(anotherEmitter, 'for some event', function(arg1, arg2) {
