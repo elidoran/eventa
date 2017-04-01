@@ -6,8 +6,6 @@
 
 Simple advanced central event communicator.
 
-[README - CoffeeScript Edition](https://github.com/elidoran/node-eventa/blob/master/docs/README-CS.md)
-
 
 ## Install
 
