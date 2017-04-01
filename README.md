@@ -1,7 +1,7 @@
 # eventa
-[![Build Status](https://travis-ci.org/elidoran/eventa.svg?branch=master)](https://travis-ci.org/elidoran/eventa)
+[![build status][travis-image]][travis-url]
 [![Dependency Status](https://gemnasium.com/elidoran/eventa.png)](https://gemnasium.com/elidoran/eventa)
-[![npm version](https://badge.fury.io/js/eventa.svg)](http://badge.fury.io/js/eventa)
+[![NPM version][npm-image]][npm-url]
 [![Coverage Status](https://coveralls.io/repos/github/elidoran/eventa/badge.svg?branch=master)](https://coveralls.io/github/elidoran/eventa?branch=master)
 
 Simple advanced central event communicator.
