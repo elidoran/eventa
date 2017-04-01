@@ -2,38 +2,28 @@
 
 class Eventa
 
-  # ready's the arrays it uses to track stuff.
+  # ready the array it uses to store info.
   # accepts `options` as an array of modules/functions to load.
   constructor: (options) ->
-    @_names = []     # store the event names corresponding to listener arrays
-    @_listeners = [] # array of arrays, each element is a listener array
-    @_removals = []  # store removers to run
+    @_info = []
+
     if Array.isArray options then @load options
 
 
-  # gets the array of listeners from the array of arrays by searching the
-  # array of event names for the right index to use.
-  # creates a new array if one doesn't exist.
-  # also helps replace an array when we filter out the removals (nulls)
-  _listenersFor: (event, array) ->
-    index = @_names.indexOf event
 
-    if index is -1
-      @_names.push event
-      @_listeners.push listeners = []
-      listeners
-
-    else if array?
-      @_listeners[index] = array
-
-    else
-      @_listeners[index]
+  # gets the array of listeners from the info array by searching the
+  # array for the matching event name.
+  # creates a new event entry in the array if one doesn't exist.
+  _listeners: (event) ->
+    return info.listeners for info in @_info when info.name is event
+    @_info.push info = name: event, listeners: []
+    return info.listeners
 
 
   # builds and returns a function/closure which finds and nullifies
   # the object in the provided listeners array.
   # used to provide a way to remove a listener via a simple function call.
-  # after each time an event's listeners are run it then removes nulls
+  # the emit() function will clean up nulls after it runs thru the listeners
   _remover: (listeners, object) ->
     -> # find it, conditionally nullify it
       index = listeners.indexOf object
@@ -41,19 +31,52 @@ class Eventa
       return
 
 
+  # it's possible to buildup elements in the info array with empty listener
+  # arrays which aren't being used anymore.
+  # this function eliminates those.
+  # NOTE: emit() triggers removing null'ed elements in listeners array.
+  # so, cleanup() won't clean up if there hasn't been an emit()
+  cleanup: ->
+    clean = @_cleanListeners
+    @_info = @_info.filter (info) -> clean(info.listeners).length > 0
+    
+  # look thru array and shift existing elements left to compact them together.
+  _cleanListeners: (listeners) ->
+    shift = 0
+    for el, i in listeners
+      unless el? then shift++
+      else if shift > 0 then listeners[i - shift] = el
+
+    # truncate the array (set length) to new length.
+    # NOTE: testing showed Node eliminates elements after the length,
+    # so, we won't null them explicitly.
+    if shift > 0 then listeners.length = listeners.length - shift
+
+    # TODO: if final length is zero then we could remove the event completely,
+    #       we'd need the event name too
+
+    return listeners
+
+
+  # a convenience for:
+  #   eventa.on('event', listener, null, 1)
+  once: (event, fn, context) -> @on event, fn, context, 1
+
+
   # a busy version of the usual 'on' function.
   # basically, it adds a listener for the specified event.
   # more advanced:
   #   1. it allows specifying the context to use with listener,
   #   2. and the number of times it should be called (null = infinity)
-  # lastly, it also handles the "once" work `count` equals 1
+  # lastly, it also handles the "once" work using `count` as 1
   on: (event, fn, context, count) ->
 
     # hold the info related to this listener for both execution and auto-removal
+    # NOTE: both `context` and `count` may be undefined or null.
     object = { fn, context, count }
 
     # get our listener array for this event (create it when it doesn't exist)
-    listeners = @_listenersFor event
+    listeners = @_listeners event
 
     # add the object to the end.
     # although that seems like the normal thing to do it's important to note
@@ -81,8 +104,8 @@ class Eventa
     # execute the listeners array for the specified event.
     # track if we have any removes to handle so we can filter the array afterward.
     remove = false
-    listeners = @_listenersFor event
-    for listener, index in listeners
+    listeners = @_listeners event
+    for listener, index in listeners by -1 # 'by -1' means 'back-to-front order'
 
       # if a listener was null'ed but hasn't been filtered out yet, then skip it
       unless listener?
@@ -103,10 +126,8 @@ class Eventa
         else # otherwise, decriment the count
           listener.count--
 
-    if remove # if we removed/null'ed some then filter them out.
-      # filter the current array keeping only those which exist (not null'ed).
-      # this function can also find where the array is stored and replace it
-      @_listenersFor event, listeners.filter (o) -> o?
+    # if there are some to get rid of ...
+    if remove then @_cleanListeners listeners
 
     return
 
@@ -114,7 +135,6 @@ class Eventa
 
   # simply emit the start event
   start: -> @emit 'start' ; return
-
 
 
   load: ->

@@ -2,6 +2,9 @@ assert = require 'assert'
 {EventEmitter} = require 'events'
 buildEventa = require '../../lib/index.coffee'
 
+# helper to look into the eventa object
+firstListeners = (eventa) -> eventa._info[0].listeners
+
 describe 'test eventa', ->
 
   it 'will load array provided to builder', ->
@@ -16,7 +19,7 @@ describe 'test eventa', ->
     eventa = buildEventa()
     fn = ->
     eventa.on 'test add', fn
-    assert.strictEqual eventa._listeners[0][0].fn, fn, 'should be the same function'
+    assert.strictEqual firstListeners(eventa)[0].fn, fn, 'should be the same function'
 
 
   it 'should allow emit for an event with zero listeners', ->
@@ -40,12 +43,12 @@ describe 'test eventa', ->
     listenerWasCalled = false
     fn = -> listenerWasCalled = true
     handle = eventa.on 'removing', fn
-    assert.strictEqual eventa._listeners?[0]?.length, 1, 'should be there'
+    assert.strictEqual firstListeners(eventa).length, 1, 'should be there'
     handle.remove()
-    assert.strictEqual eventa._listeners[0].length, 1, 'should still have the spot'
-    assert.strictEqual eventa._listeners[0][0], null, 'should be null'
+    assert.strictEqual firstListeners(eventa).length, 1, 'should still have the spot'
+    assert.strictEqual firstListeners(eventa)[0], null, 'should be null'
     eventa.emit 'removing', 'blah'
-    assert.equal eventa._listeners[0].length, 0, 'should be gone after emit'
+    assert.equal firstListeners(eventa).length, 0, 'should be gone after emit'
     assert.equal listenerWasCalled, false, 'should not have called the listener'
 
 
@@ -53,10 +56,10 @@ describe 'test eventa', ->
     eventa = buildEventa()
     listenerWasCalled = false
     fn = -> listenerWasCalled = true
-    handle = eventa.on 'removing', fn, null, 1
-    assert.strictEqual eventa._listeners[0].length, 1, 'should have the spot'
+    handle = eventa.once 'removing', fn
+    assert.strictEqual firstListeners(eventa).length, 1, 'should have the spot'
     eventa.emit 'removing', 'blah'
-    assert.equal eventa._listeners[0].length, 0, 'should be gone after emit'
+    assert.equal firstListeners(eventa).length, 0, 'should be gone after emit'
     assert.equal listenerWasCalled, true, 'should have called the listener'
 
 
@@ -65,13 +68,13 @@ describe 'test eventa', ->
     handle = null
     listenerWasCalled = false
     fn = -> listenerWasCalled = true
-    handle = eventa.on 'removing', fn, null, 1
-    assert.strictEqual eventa._listeners?[0]?.length, 1, 'should be there'
+    handle = eventa.once 'removing', fn
+    assert.strictEqual firstListeners(eventa).length, 1, 'should be there'
     handle.remove()
-    assert.strictEqual eventa._listeners[0].length, 1, 'should still have the spot'
-    assert.strictEqual eventa._listeners[0][0], null, 'should be null'
+    assert.strictEqual firstListeners(eventa).length, 1, 'should still have the spot'
+    assert.strictEqual firstListeners(eventa)[0], null, 'should be null'
     eventa.emit 'removing', 'blah'
-    assert.equal eventa._listeners[0].length, 0, 'should be gone after emit'
+    assert.equal firstListeners(eventa).length, 0, 'should be gone after emit'
     assert.equal listenerWasCalled, false, 'should NOT have called the listener'
 
 
@@ -82,7 +85,7 @@ describe 'test eventa', ->
     handle.remove()
     handle.remove()
     eventa.emit 'remove', 'blah'
-    assert.equal eventa._listeners[0].length, 0, 'should be gone after emit'
+    assert.equal firstListeners(eventa).length, 0, 'should be gone after emit'
     handle.remove()
     handle.remove()
     handle.remove()
@@ -92,24 +95,24 @@ describe 'test eventa', ->
     eventa = buildEventa()
     count = 0
     eventa.on 'count', (-> count++), null, 3
-    assert.equal eventa._listeners[0].length, 1
+    assert.equal firstListeners(eventa).length, 1
     assert.equal count, 0
 
     eventa.emit 'count', 'blah'
     assert.equal count, 1
-    assert.equal eventa._listeners[0].length, 1
+    assert.equal firstListeners(eventa).length, 1
 
     eventa.emit 'count', 'blah'
     assert.equal count, 2
-    assert.equal eventa._listeners[0].length, 1
+    assert.equal firstListeners(eventa).length, 1
 
     eventa.emit 'count', 'blah'
     assert.equal count, 3
-    assert.equal eventa._listeners[0].length, 0
+    assert.equal firstListeners(eventa).length, 0
 
     eventa.emit 'count', 'blah'
     assert.equal count, 3
-    assert.equal eventa._listeners[0].length, 0
+    assert.equal firstListeners(eventa).length, 0
 
 
   it 'will emit start on start()', ->
@@ -332,3 +335,87 @@ describe 'test eventa', ->
     assert.equal first.error, 'error msg'
     assert.equal first.Error, 'one'
     assert.equal second.object, 'two'
+
+
+  it 'will compact listener array after emit if nulls were found', ->
+
+    eventa = buildEventa()
+    handle = null
+    fn1 = ->
+    fn3 = ->
+    eventa.on 'blah', fn1
+    handle = eventa.on 'blah', ->
+    eventa.on 'blah', fn3
+
+    handle.remove()
+
+    assert.equal eventa._info.length, 1, 'only one event'
+    assert.equal eventa._info[0].listeners.length, 3, 'three listeners'
+    assert.equal eventa._info[0].listeners[0].fn, fn1
+    assert.equal eventa._info[0].listeners[1], null, 'second listener is nulled'
+    assert.equal eventa._info[0].listeners[2].fn, fn3, 'third listener exists'
+
+    eventa.emit 'blah', test:true
+
+    assert.equal eventa._info.length, 1, 'only one event'
+    assert.equal eventa._info[0].listeners.length, 2, 'now two listeners'
+    assert.equal eventa._info[0].listeners[0].fn, fn1, 'first listener still exists'
+    assert.equal eventa._info[0].listeners[1].fn, fn3, 'third listener is now second'
+
+
+
+  it 'will compact the internal structure eliminating empty event info', ->
+
+    eventa = buildEventa()
+    handles = []
+    handles.push eventa.on 'blah1', ->
+    handles.push eventa.on 'blah1', ->
+    handles.push eventa.on 'blah1', ->
+    handles.push eventa.on 'blah2', ->
+    handles.push eventa.on 'blah2', ->
+    handles.push eventa.on 'blah2', ->
+    handles.push eventa.on 'blah2', ->
+    handles.push eventa.on 'blah3', ->
+    handles.push eventa.on 'blah4', ->
+    handles.push eventa.on 'blah4', ->
+    handles.push eventa.on 'blah5', ->
+    handles.push eventa.on 'blah5', ->
+    handles.push eventa.on 'blah5', ->
+    handles.push eventa.on 'blah5', ->
+    handles.push eventa.on 'blah6', ->
+    handles.push eventa.on 'blah6', ->
+
+    assert.equal eventa._info.length, 6, 'should be 6 event infos in there'
+    assert.equal eventa._info[0].listeners.length, 3, 'three blah1'
+    assert.equal eventa._info[1].listeners.length, 4, 'four blah2'
+    assert.equal eventa._info[2].listeners.length, 1, 'one blah3'
+    assert.equal eventa._info[3].listeners.length, 2, 'two blah4'
+    assert.equal eventa._info[4].listeners.length, 4, 'four blah5'
+    assert.equal eventa._info[5].listeners.length, 2, 'two blah6'
+
+    assert eventa._info[1].listeners[0], 'blah2 listeners exist'
+    assert eventa._info[2].listeners[0], 'blah3 listeners exist'
+    assert eventa._info[4].listeners[0], 'blah5 listeners exist'
+
+    handle.remove() for handle in handles[3..7]   # blah2 and blah3
+    handle.remove() for handle in handles[10..13] # blah5
+
+    # still the same lengths. they're just null elements
+    assert.equal eventa._info[0].listeners.length, 3, 'three blah1'
+    assert.equal eventa._info[1].listeners.length, 4, 'four blah2'
+    assert.equal eventa._info[2].listeners.length, 1, 'one blah3'
+    assert.equal eventa._info[3].listeners.length, 2, 'two blah4'
+    assert.equal eventa._info[4].listeners.length, 4, 'four blah5'
+    assert.equal eventa._info[5].listeners.length, 2, 'two blah6'
+
+    # now they're null
+    assert.equal eventa._info[1].listeners[0], null, 'blah2 listeners nulled'
+    assert.equal eventa._info[2].listeners[0], null, 'blah3 listeners nulled'
+    assert.equal eventa._info[4].listeners[0], null, 'blah5 listeners nulled'
+
+    eventa.cleanup()
+
+    assert.equal eventa._info.length, 3, 'should be 3 event infos left in there'
+    assert.equal eventa._info[0].listeners.length, 3, 'three blah1'
+    assert.equal eventa._info[1].listeners.length, 2, 'two blah4'
+    assert.equal eventa._info[2].listeners.length, 2, 'two blah6'
