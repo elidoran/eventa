@@ -1,0 +1,69 @@
+{
+  "name": "eventa",
+  "version": "0.1.0",
+  "description": "Simple advanced central event communicator",
+  "unpkg": "lib/umd.min.js",
+  "browser": "lib/umd.min.js",
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "keywords": [
+    "eventa",
+    "event",
+    "events",
+    "emit",
+    "emitter",
+    "listen",
+    "listener",
+    "trigger",
+    "pubsub",
+    "event emitter",
+    "event-emitter",
+    "EventEmitter",
+    "EventEmitter2",
+    "EventEmitter3"
+  ],
+  "author": "Eli Doran <eli+npm@elidoran.com>",
+  "license": "MIT",
+  "scripts": {
+    "lint": "coffeelint -f build/coffeelint.json lib",
+    "prebuild": "npm run lint",
+    "build": "coffee --compile --bare --map --no-header lib",
+    "preumd": "npm run build",
+    "umd": "coffee build/umd.coffee",
+    "preumd-min": "npm run umd",
+    "umd-min": "cd lib && uglifyjs umd.js --compress --mangle --source-map umd.min.js.map --in-source-map umd.js.map --output umd.min.js",
+    "clean": "rm lib/*.js lib/*.map",
+    "prepublish": "npm run umd-min",
+    "postpublish": "npm run clean",
+    "pretest": "npm run build",
+    "test": "_mocha --compilers coffee:coffee-script/register --reporter spec --bail --check-leaks test/lib",
+    "precoverage": "npm run build",
+    "coverage": "istanbul cover -x 'build/**' _mocha -- --compilers coffee:coffee-script/register --require coffee-coverage/register-istanbul --cc-x=/build -R spec test/lib",
+    "publish-coverage": "npm run coverage && cat coverage/lcov.info | coveralls",
+    "coverage-lcov": "istanbul cover _mocha --report lcovonly -- --compilers coffee:coffee-script/register --require coffee-coverage/register-istanbul -R spec test/lib",
+    "coverage-clean": "rm -rf ./coverage",
+    "travis": "npm run clean && npm run coverage-lcov"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/elidoran/eventa.git"
+  },
+  "bugs": "http://github.com/elidoran/eventa/issues",
+  "devDependencies": {
+    "coffee-coverage": "^1.0.1",
+    "coffee-script": "^1.12.4",
+    "coffeelint": "^1.16.0",
+    "coveralls": "^2.11.16",
+    "istanbul": "^0.4.5",
+    "magic-string": "^0.19.0",
+    "mocha": "^3.2.0",
+    "mocha-lcov-reporter": "^1.2.0",
+    "webpack": "^2.3.2"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=4"
+  }
+}
