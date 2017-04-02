@@ -76,7 +76,7 @@ eventa.start()
 //  3. an object with a `fn` property containing the function,
 //     may also have an `options` property which will be the second arg.
 //  4. an array containing any of the above three
-eventa.load('./local/module')
+eventa.load(['./local/module'], __dirname)
 eventa.load('published-package')
 eventa.load(function (eventa) { eventa.on('blah', function(){})})
 // this looks odd with both supplied here.
