@@ -27,6 +27,7 @@ var buildEventa = require('eventa')
   , eventa = buildEventa(['some-package', './local-module'], __dirname)
 
 // also load explicitly via load()
+// NOTE: for local modules, specify your `__dirname` as second arg
 eventa.load([
   './local-module2',
   './local-module3'

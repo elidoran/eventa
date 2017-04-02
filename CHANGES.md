@@ -1,3 +1,8 @@
+0.3.0 - Released 2017/04/02
+
+1. added ability to provide `__dirname` to resolve local modules in `load()`
+
+
 0.2.0 - Released 2017/04/01
 
 1. added a little extra babble to the README's description at the top.
