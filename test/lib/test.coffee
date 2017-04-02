@@ -127,13 +127,39 @@ describe 'test eventa', ->
   it 'will try to require strings for load()', ->
 
     eventa = buildEventa()
-    {resolve} = require 'path'
-    path = resolve __dirname, '..', 'helpers', 'placeholder.js'
-    eventa.load path
-    placeholder = require path
+    {join, resolve} = require 'path'
+    path1 = join '..', 'helpers', 'placeholder.js'
+    path2 = './helper.js' # join '.', 'helper.js'
+
+    # this is allll to create a fake package to require as a non-local module.
+    fakePackage = 'blahblahblah'
+    fakePath = resolve '..', '..', 'node_modules', fakePackage
+    require.cache[fakePath] =
+      id: fakePath
+      filename: fakePath
+      loaded: true
+      exports: (eventa) ->
+    Module = require 'module'
+    realResolve = Module._resolveFilename
+    Module._resolveFilename = (request, parent) ->
+      if request is fakePackage then fakePath
+      else realResolve request, parent
+
+    # finally, load all three.
+    eventa.load [path1, path2, fakePackage], __dirname
+
+    placeholder = require path1
     assert.equal placeholder.counter, 1, 'it should be called by load()'
     placeholder()
     assert.equal placeholder.counter, 2, 'it should be called by both load() and us'
+
+
+  it 'will load() arrays inside arguments', ->
+
+    eventa = buildEventa()
+    called = false
+    eventa.load [ [-> called = true] ]
+    assert.equal called, true, 'it should be called by load()'
 
 
   it 'will provide builder options from load() when they are provided', ->
