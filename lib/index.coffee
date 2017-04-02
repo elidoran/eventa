@@ -137,6 +137,11 @@ class Eventa
   start: -> @emit 'start' ; return
 
 
+  _isLocalPath: (arg) ->
+
+    arg[0] is '.' and (arg[1] is '/' or (arg[1] is '.' and arg[2] is '/'))
+
+
   load: (array, dir) ->
 
     if Array.isArray array then args = array
@@ -156,12 +161,17 @@ class Eventa
 
         # a string *should* be a path to a module we can require to get a function
         when 'string'  # TODO: ( ...  or arg[1] is '\\') ??
-          @resolve ?= require('path').resolve
 
-          if arg[0] is '.' and arg[1] is '/'
-            require(@resolve dir ? '.', arg)(this)
+          if @_isLocalPath arg
+
+            # get resolve if we haven't already
+            @resolve ?= require('path').resolve
+            
+            # resolve against the provided base dir or '.'
+            require(@resolve dir ? '.', arg) this
+
           else
-            require(arg) this
+            require(arg)(this)
 
         # if it's a function then just call it, yay.
         when 'function' then arg this
