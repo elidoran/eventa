@@ -24,13 +24,13 @@ npm install eventa --save
     // package returns a builder function
 var buildEventa = require('eventa')
     // provide an array of things to load at build time
-  , eventa = buildEventa(['some-package', './local-module'])
+  , eventa = buildEventa(['some-package', './local-module'], __dirname)
 
 // also load explicitly via load()
-eventa.load(
+eventa.load([
   './local-module2',
   './local-module3'
-)
+], __dirname)
 
 // it has the standard EventEmitter style functions
 eventa.on('someEvent', function() { /* do something */ })

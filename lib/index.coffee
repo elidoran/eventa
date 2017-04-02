@@ -4,11 +4,10 @@ class Eventa
 
   # ready the array it uses to store info.
   # accepts `options` as an array of modules/functions to load.
-  constructor: (options) ->
+  constructor: (options, dir) ->
     @_info = []
 
-    if Array.isArray options then @load options
-
+    if Array.isArray options then @load options, dir
 
 
   # gets the array of listeners from the info array by searching the
@@ -39,7 +38,8 @@ class Eventa
   cleanup: ->
     clean = @_cleanListeners
     @_info = @_info.filter (info) -> clean(info.listeners).length > 0
-    
+
+
   # look thru array and shift existing elements left to compact them together.
   _cleanListeners: (listeners) ->
     shift = 0
@@ -137,11 +137,15 @@ class Eventa
   start: -> @emit 'start' ; return
 
 
-  load: ->
+  load: (array, dir) ->
 
-    # optimization friendly way to convert `arguments` into an array
-    args = []
-    args.push.apply args, arguments
+    if Array.isArray array then args = array
+
+    else
+      dir = null
+      # optimization friendly way to convert `arguments` into an array
+      args = []
+      args.push.apply args, arguments
 
     # iterate the args and determine what to do with them.
     # they should be module paths for exported functions, functions,
@@ -151,7 +155,13 @@ class Eventa
       switch typeof arg
 
         # a string *should* be a path to a module we can require to get a function
-        when 'string' then require(arg) this
+        when 'string'  # TODO: ( ...  or arg[1] is '\\') ??
+          @resolve ?= require('path').resolve
+
+          if arg[0] is '.' and arg[1] is '/'
+            require(@resolve dir ? '.', arg)(this)
+          else
+            require(arg) this
 
         # if it's a function then just call it, yay.
         when 'function' then arg this
@@ -160,7 +170,7 @@ class Eventa
         when 'object'
 
           # arrays cause a recursive call to this load() function
-          if Array.isArray arg then @load.apply this, arg
+          if Array.isArray arg then @load arg, dir
 
           # an object is the only way to specify a function with options
           else if arg.fn? then arg.fn this, arg.options
@@ -286,4 +296,4 @@ class Eventa
 
 
 
-module.exports = (options) -> new Eventa options
+module.exports = (options, dir) -> new Eventa options, dir
