@@ -56,7 +56,7 @@ eventa.load(['some-package', 'another-package'])
 eventa.load(['some-package', 'another-package'], {the:'options'})
 
 // load a relative path to a module:
-// NOTE: you must either provide __dirname or user require.resolve
+// NOTE: you must either provide __dirname or use require.resolve
 eventa.load('./local', __dirname)
 eventa.load(require.resolve('./local'))
 
@@ -76,7 +76,7 @@ eventa.load(['some-package','./local'], {options:'second'}, __dirname)
 Eventa provides the common event emitter functions, with some extra abilities.
 
 1. Provide a context for an event listener function. This allows a class instance method to be used as a listener by providing both its function and the class instance itself. This avoids the annoying `object.method.bind(object)` and the extra bind wrapper function. Instead, you can do: `eventa.on('event', object.method, object)`.
-2. Specify the number of times a listener may be called before it is removed. This extends the `once()` ability to a count you specify. For example, five times: `eventa.on('event', someFn, null, 5)` (Note, the null is the context we're not providing).
+2. Specify the number of times a listener may be called before it is removed. This extends the `once()` ability to a count you specify. For example, five times: `eventa.on('event', someFn, null, 5)` (Note, the `null` is the context we're not providing).
 3. The `on()` and `once()` functions return a "handle" object. It contains a `remove` function which will remove the listener from the **eventa** instance. This makes removing listeners much easier because it avoids requiring all the original arguments. It can be called inside the listener while an event emit is running, or, anytime.
 
 
@@ -128,6 +128,7 @@ Eventa helps build an event-driven app with extra functions.
 6. **watchError()** - A special case of `watch()` for `'error'` events. Specify the emitter to watch and an error message to use. It expects the error will be emitted with a single error argument. It will emit on Eventa with a single argument as well. It will have an `error` property containing the error message specified to `watchError()` and, an `Error` property with the error object provided to the original listener.
 7. **accept** - Provides a callback function which will emit each argument as an event using the name specified in the array. The order of the names is used to match them to the arguments. Use this to have it emit the usual error or result arguments with custom names. If the name `'error'` is used then it receives the same treatment as in `watchError()` to produce an object with both `'error'` and `'Error'` properties.
 
+```javascript
 // 1. start()
 // simply emits a start event. It may develop into more later,
 // for now, it's simple.
