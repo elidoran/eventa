@@ -1,6 +1,6 @@
 {
   "name": "eventa",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Simple advanced central event communicator",
   "unpkg": "lib/umd.min.js",
   "browser": "lib/umd.min.js",
