@@ -128,12 +128,12 @@ describe 'test eventa', ->
 
     eventa = buildEventa()
     {join, resolve} = require 'path'
-    path1 = join '..', 'helpers', 'placeholder.js'
+    path1 = '../helpers/placeholder.js'
     path2 = './helper.js' # join '.', 'helper.js'
 
     # this is allll to create a fake package to require as a non-local module.
     fakePackage = 'blahblahblah'
-    fakePath = resolve '..', '..', 'node_modules', fakePackage
+    fakePath = resolve '../../node_modules', fakePackage
     require.cache[fakePath] =
       id: fakePath
       filename: fakePath
@@ -162,19 +162,24 @@ describe 'test eventa', ->
     assert.equal called, true, 'it should be called by load()'
 
 
-  it 'will provide builder options from load() when they are provided', ->
+  it 'will provide options from load() when they are provided', ->
 
     eventa = buildEventa()
-    eventa.load fn: ->
+    eventa.load ->
     options = some:'options'
     optionsArg = null
-    eventa.load options:options, fn: (eventa, theOptions) -> optionsArg = theOptions
+    eventa.load ((eventa, theOptions) -> optionsArg = theOptions), options
     assert.strictEqual optionsArg, options
 
 
-  it 'will report an error for an invalid object argument to load()', ->
+  it 'will use both options and __dirname for load()', ->
+
     eventa = buildEventa()
-    eventa.load {no:'good'}
+    eventa.load ->
+    options = some:'options'
+    eventa.load '../helpers/options.js', options, __dirname
+    receivedOptions = require('../helpers/options.js').options
+    assert.strictEqual receivedOptions, options
 
 
   it 'will report an error for an invalid argument to load()', ->
@@ -445,3 +450,187 @@ describe 'test eventa', ->
     assert.equal eventa._info[0].listeners.length, 3, 'three blah1'
     assert.equal eventa._info[1].listeners.length, 2, 'two blah4'
     assert.equal eventa._info[2].listeners.length, 2, 'two blah6'
+
+
+
+  it 'will waitFor() multiple events with all single args', ->
+
+    eventa = buildEventa()
+    empty = new Array 3
+    called = false
+    result = new Array 3
+    eventa.waitFor [ 'a', 'b', 'c' ], (a, b, c) ->
+      called = true
+      result[0] = a
+      result[1] = b
+      result[2] = c
+
+    assert.deepEqual result, empty, 'should be empty to start'
+    assert.equal called, false, 'shouldnt be called right away'
+
+    eventa.emit 'd', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 1'
+    assert.deepEqual result, empty, 'should still be empty after first diff event'
+
+    eventa.emit 'b', '2'
+
+    assert.equal called, false, 'shouldnt be called yet 2'
+    assert.deepEqual result, empty, 'should have the b but not call yet'
+
+    eventa.emit 'a', '1'
+
+    assert.equal called, false, 'shouldnt be called yet 3'
+    assert.deepEqual result, empty, 'should have the a as well, but not clal yet'
+
+    eventa.emit 'e', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 4'
+    assert.deepEqual result, empty, 'should still be the same after second diff event'
+
+    eventa.emit 'c', '3'
+
+    assert.equal called, true, 'should be called'
+    assert.deepEqual result, ['1', '2', '3']
+
+
+  it 'will waitFor() multiple events with one providing multiple args', ->
+
+    eventa = buildEventa()
+    empty = new Array 3
+    called = false
+    result = new Array 3
+    listener = (a, b, c) ->
+      called = true
+      result[0] = a
+      result[1] = b
+      result[2] = c
+
+    eventa.waitFor [ 'a', 'b', 'c' ], listener, null, many:true
+
+    assert.deepEqual result, empty, 'should be empty to start'
+    assert.equal called, false, 'shouldnt be called right away'
+
+    eventa.emit 'd', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 1'
+    assert.deepEqual result, empty, 'should still be empty after first diff event'
+
+    eventa.emit 'b', '2', '22', 'two'
+
+    assert.equal called, false, 'shouldnt be called yet 2'
+    assert.deepEqual result, empty, 'should have the b but not call yet'
+
+    eventa.emit 'a', '1'
+
+    assert.equal called, false, 'shouldnt be called yet 3'
+    assert.deepEqual result, empty, 'should have the a as well, but not clal yet'
+
+    eventa.emit 'e', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 4'
+    assert.deepEqual result, empty, 'should still be the same after second diff event'
+
+    eventa.emit 'c', '3'
+
+    assert.equal called, true, 'should be called'
+    assert.deepEqual result, ['1', ['2', '22', 'two'], '3']
+
+
+  it 'will waitFor() multiple events and intermediate repeats overwrite', ->
+
+    eventa = buildEventa()
+    empty = new Array 3
+    called = false
+    result = new Array 3
+    listener = (a, b, c) ->
+      called = true
+      result[0] = a
+      result[1] = b
+      result[2] = c
+
+    eventa.waitFor [ 'a', 'b', 'c' ], listener
+
+    assert.deepEqual result, empty, 'should be empty to start'
+    assert.equal called, false, 'shouldnt be called right away'
+
+    eventa.emit 'd', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 1'
+    assert.deepEqual result, empty, 'should still be empty after first diff event'
+
+    eventa.emit 'b', '2', '22', 'two'
+    # REPEAT OVERWRITES
+    eventa.emit 'b', 'two'
+
+    assert.equal called, false, 'shouldnt be called yet 2'
+    assert.deepEqual result, empty, 'should have the b but not call yet'
+
+    eventa.emit 'a', '1'
+
+    assert.equal called, false, 'shouldnt be called yet 3'
+    assert.deepEqual result, empty, 'should have the a as well, but not clal yet'
+
+    eventa.emit 'e', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 4'
+    assert.deepEqual result, empty, 'should still be the same after second diff event'
+
+    eventa.emit 'c', '3'
+
+    assert.equal called, true, 'should be called'
+    assert.deepEqual result, ['1', 'two', '3']
+
+
+  it 'will waitFor() multiple events and reset for another round', ->
+
+    eventa = buildEventa()
+    empty = new Array 3
+    called = false
+    result = new Array 3
+    listener = (a, b, c) ->
+      called = true
+      result[0] = a
+      result[1] = b
+      result[2] = c
+
+    eventa.waitFor [ 'a', 'b', 'c' ], listener
+
+    assert.deepEqual result, empty, 'should be empty to start'
+    assert.equal called, false, 'shouldnt be called right away'
+
+    eventa.emit 'd', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 1'
+    assert.deepEqual result, empty, 'should still be empty after first diff event'
+
+    eventa.emit 'b', 'two'
+    # NOTE: REPEAT OVERWRITES
+    eventa.emit 'b', '2'
+
+    assert.equal called, false, 'shouldnt be called yet 2'
+    assert.deepEqual result, empty, 'should have the b but not call yet'
+
+    eventa.emit 'a', '1'
+
+    assert.equal called, false, 'shouldnt be called yet 3'
+    assert.deepEqual result, empty, 'should have the a as well, but not clal yet'
+
+    eventa.emit 'e', diff:'event'
+
+    assert.equal called, false, 'shouldnt be called yet 4'
+    assert.deepEqual result, empty, 'should still be the same after second diff event'
+
+    eventa.emit 'c', '3'
+
+    assert.equal called, true, 'should be called'
+    assert.deepEqual result, ['1', '2', '3']
+
+    # use different stuff for the second round
+    eventa.emit 'd', diff:'event'
+    eventa.emit 'b', 'bbb'
+    eventa.emit 'a', 'aaa'
+    eventa.emit 'e', diff:'event'
+    eventa.emit 'c', 'ccc'
+
+    assert.deepEqual result, [ 'aaa', 'bbb', 'ccc' ]
