@@ -4,10 +4,10 @@ class Eventa
 
   # ready the array it uses to store info.
   # accepts `options` as an array of modules/functions to load.
-  constructor: (options, dir) ->
+  constructor: (thing, options, dir) ->
     @_info = []
 
-    if Array.isArray options then @load options, dir
+    if thing? then @load thing, options, dir
 
 
   # gets the array of listeners from the info array by searching the
@@ -37,7 +37,10 @@ class Eventa
   # so, cleanup() won't clean up if there hasn't been an emit()
   cleanup: ->
     clean = @_cleanListeners
-    @_info = @_info.filter (info) -> clean(info.listeners).length > 0
+    @_info = @_info.filter (info) ->
+      # let's also rebuild the listeners array
+      info.listeners = info.listeners.filter (el) -> el?
+      clean(info.listeners).length > 0
 
 
   # look thru array and shift existing elements left to compact them together.
@@ -142,57 +145,36 @@ class Eventa
     arg[0] is '.' and (arg[1] is '/' or (arg[1] is '.' and arg[2] is '/'))
 
 
-  load: (array, dir) ->
+  load: (thing, options, dir) ->
 
-    if Array.isArray array then args = array
+    if Array.isArray thing
+      @load each, options, dir for each in thing
+      return
 
-    else
-      dir = null
-      # optimization friendly way to convert `arguments` into an array
-      args = []
-      args.push.apply args, arguments
+    if typeof options is 'string'
+      dir = options
+      options = null
 
-    # iterate the args and determine what to do with them.
-    # they should be module paths for exported functions, functions,
-    # or an array/object containing them.
-    for arg in args
+    # now we know it's not an array argument, and we know the options and dir.
+    switch typeof thing
 
-      switch typeof arg
+      when 'string'
 
-        # a string *should* be a path to a module we can require to get a function
-        when 'string'  # TODO: ( ...  or arg[1] is '\\') ??
+        if @_isLocalPath thing
 
-          if @_isLocalPath arg
+          # get resolve if we haven't already
+          @resolve ?= require('path').resolve
 
-            # get resolve if we haven't already
-            @resolve ?= require('path').resolve
-            
-            # resolve against the provided base dir or '.'
-            require(@resolve dir ? '.', arg) this
+          # resolve against the provided base dir or '.'
+          thing = @resolve dir ? '.', thing
 
-          else
-            require(arg)(this)
+        require(thing)(this, options)
 
-        # if it's a function then just call it, yay.
-        when 'function' then arg this
+      when 'function' then thing this, options
 
-        # an object could mean multiple things, hopefully it's something useful
-        when 'object'
-
-          # arrays cause a recursive call to this load() function
-          if Array.isArray arg then @load arg, dir
-
-          # an object is the only way to specify a function with options
-          else if arg.fn? then arg.fn this, arg.options
-
-          # otherwise, it's not allowed. :-/
-          else console.error 'invalid object argument for load():', arg
-
-        # anything other than string/function/object is invalid
-        else console.error 'invalid type of argument for load():', arg
+      else console.error 'invalid type of argument for load():', thing
 
     return
-
 
 
   # forward an event emitted on this Eventa to another `target` emitter
@@ -303,6 +285,40 @@ class Eventa
             eventa.emit name, object:args[index]
 
       return
+
+
+  # like on() but for combining multiple events.
+  # waits for all specified events to occur before calling the listener.
+  # if there are multiple arguments to one or more event, set `many` option:
+  #   eventa.waitFor(['a', 'b', 'c'], fn, class, {many:true})
+  waitFor: (nameArray, fn, context, options) ->
+
+    array = new Array nameArray.length
+    count = 0
+
+    for event, index in nameArray
+
+      # if we have them all then call the function.
+      @on event, do (index) -> (arg) ->
+
+        unless array[index]? then count++
+        # else # TODO: warn it's overwriting the object...
+
+        array[index] =
+          unless options?.many is true then arg
+          else
+            args = []
+            args.push.apply args, arguments
+            # still check if there's only one to provide it direct
+            if args.length is 1 then args[0] else args
+
+        if count is nameArray.length
+          fn.apply context, array
+          # reset for next round (feature creep? unneeded?)
+          count = 0
+          array = new Array nameArray.length
+
+        return
 
 
 
