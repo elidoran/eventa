@@ -1,3 +1,12 @@
+0.4.0 - Released 2017/04/05
+
+1. added `waitFor()`
+2. updated README about `waitFor()`
+3. reimplement `load()` for cleaner API with options argument
+4. updated README for new `load()`
+5. added more README documentation *outside* of the code blocks and split up some code blocks (still needs more work)
+
+
 0.3.0 - Released 2017/04/02
 
 1. added ability to provide `__dirname` to resolve local modules in `load()`
