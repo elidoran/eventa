@@ -20,42 +20,113 @@ npm install eventa --save
 ## Usage
 
 
+### Usage: Build Eventa
+
 ```javascript
-    // package returns a builder function
+// package returns a builder function
 var buildEventa = require('eventa')
-    // provide an array of things to load at build time
-  , eventa = buildEventa(['some-package', './local-module'], __dirname)
 
-// also load explicitly via load()
-// NOTE: for local modules, specify your `__dirname` as second arg
-eventa.load([
-  './local-module2',
-  './local-module3'
-], __dirname)
+// build it plain:
+var eventa = buildEventa()
+```
 
-// it has the standard EventEmitter style functions
+Provide `load()` arguments to the builder as a convenience. It accepts all forms of arguments exactly like `load()`.
+
+
+### Usage: load()
+
+Load accepts three types of things:
+
+1. **function** - it will call the function providing itself as the first argument.
+2. **string** - it will attempt to `require()` the string. If the string starts with `'./'` or `'../'` then it will attempt to resolve it with the second argument to `load()`. So, when loading local modules either use `require.resolve()` on them first or specify `__dirname` as the second argument. It expects the `require()` result to provide a function which will be called as described above.
+3. **array** - an array containing any of the above two types. When the array contains local module paths then provide `__dirname` as second argument, or, use `require.resolve()` on them.
+
+Note, it's possible to include an array inside an array provided to `load()`. This allows packages and modules to provide more things to load. However, paths relative to the module must be resolved via `require.resolve()` unless they will resolve the same as the original `load()` caller, or, they are relative to the current working directory.
+
+
+```javascript
+// load a package:
+eventa.load('some-package')
+// with options:
+eventa.load('some-package', {some:'options'})
+
+// use an array to specify many at once:
+eventa.load(['some-package', 'another-package'])
+// with options:
+eventa.load(['some-package', 'another-package'], {the:'options'})
+
+// load a relative path to a module:
+// NOTE: you must either provide __dirname or user require.resolve
+eventa.load('./local', __dirname)
+eventa.load(require.resolve('./local'))
+
+// with options:
+eventa.load('./local', {options:'second'}, __dirname)
+eventa.load(require.resolve('./local'), {options:'second'})
+
+// use an array to specify a mix of packages and local modules:
+eventa.load(['some-package','./local'], __dirname)
+// with options reused for each one:
+eventa.load(['some-package','./local'], {options:'second'}, __dirname)
+```
+
+
+### Usage: Common Event Emitter
+
+Eventa provides the common event emitter functions, with some extra abilities.
+
+1. Provide a context for an event listener function. This allows a class instance method to be used as a listener by providing both its function and the class instance itself. This avoids the annoying `object.method.bind(object)` and the extra bind wrapper function. Instead, you can do: `eventa.on('event', object.method, object)`.
+2. Specify the number of times a listener may be called before it is removed. This extends the `once()` ability to a count you specify. For example, five times: `eventa.on('event', someFn, null, 5)` (Note, the null is the context we're not providing).
+3. The `on()` and `once()` functions return a "handle" object. It contains a `remove` function which will remove the listener from the **eventa** instance. This makes removing listeners much easier because it avoids requiring all the original arguments. It can be called inside the listener while an event emit is running, or, anytime.
+
+
+```javascript
+// the usual on(), once(), and emit()
 eventa.on('someEvent', function() { /* do something */ })
+eventa.once('someEvent', function() { /* do something */ })
 eventa.emit('someEvent', 'blah1', {blah:'two'})
 
-// functions return an object with a `remove` property to remove listeners.
+// on() and once() return an object with a `remove` function
+// to remove the listener.
 var handle = eventa.on('event name', function() {})
+
 // then you can remove it at any time:
 handle.remove()
+
 // you can even do that while inside the listener:
 var theHandle = eventa.on('name', function() { theHandle.remove() })
 
 // instead of a once() function, you can specify the number of times
-// a listener is allowed to run. Specify 1 for a "once" listener:
+// a listener is allowed to run. (null is context)
 eventa.on('one time', function(){}, null, 1)
 eventa.on('counted 5 times', function(){}, null, 5)
+// the usual once() is available as a convenience.
+// it's the same as calling the 'one time' example above:
+eventa.once('one time', function(){})
 
-// what's that null?
 // event listener functions run without a context, usually.
-// specify a context object as the third parameter:
-eventa.on('e', function(){}, {some:'context'})
+// specify a context object as the third parameter.
+// this helps use functions attached to an object,
+// such as a class instance.
+// this avoids doing:  thing.method.bind(thing)
+// and the extra bind wrapper function call.
+var thing = new Thing
+eventa.on('e', thing.method, thing)
+eventa.once('e', thing.method, thing)
+```
 
 
-// eventa helps with building an event-driven setup so it has extra functions:
+### Usage: Advanced Event Controls
+
+Eventa helps build an event-driven app with extra functions.
+
+1. **start()** - convenience function which emits a `'start'` event. Its purpose is to encourage a focus of setting up event listeners at load including special `'start'` ones to get things going once it's all ready.
+2. **load()** - used to load other packages and local modules into the Eventa. Its purpose is to help split up the event listener providers into separate modules and, allow packages to provide common event listeners.
+3. **waitFor()** - An advanced `on()` which calls the specified listener when **all** the specified events have occurred. It gathers their arguments and provides those to the listener in the same order as the event names are provided. By default it expects each event emits a single argument. To accept multiple arguments provide `{many:true}` as the options arg.
+4. **forward()** - Emit an Eventa event on another emitter. Optionally, with a different event name. The opposite of `watch()`. It has the opposite argument order to watch. Event forwards an event to another emitter, so, `eventa.forward('event', emitter, ...)`. A "handle" is returned with a `remove()` function to remove the forward.
+5. **watch()** - Emit another emitter's event on the Eventa. Optionally, with a different event name. The opposite of `forward()`. It has the opposite argument order to forward. Event watches another emitter for an event, so, `eventa.watch(emitter, 'event', ...)`. A "handle" is returned with a `remove()` function to remove the watcher. The third argument accepts a function to call with the args from the event listener. It allows creating an array of arguments to provide to the watch's event listener. Essentially, changing the other emitter's event arguments into ones of your own.
+6. **watchError()** - A special case of `watch()` for `'error'` events. Specify the emitter to watch and an error message to use. It expects the error will be emitted with a single error argument. It will emit on Eventa with a single argument as well. It will have an `error` property containing the error message specified to `watchError()` and, an `Error` property with the error object provided to the original listener.
+7. **accept** - Provides a callback function which will emit each argument as an event using the name specified in the array. The order of the names is used to match them to the arguments. Use this to have it emit the usual error or result arguments with custom names. If the name `'error'` is used then it receives the same treatment as in `watchError()` to produce an object with both `'error'` and `'Error'` properties.
 
 // 1. start()
 // simply emits a start event. It may develop into more later,
@@ -65,39 +136,32 @@ eventa.on('e', function(){}, {some:'context'})
 eventa.start()
 
 // 2. load()
-// easily load in local modules or published packages.
-// they'll receive the instance of the eventa as an argument,
-// and optionally, an options object.
-// break up the code into modules exporting a function which
-// receives the eventa and adds their own listeners and code to emit events.
-// provide:
-//  1. the path to a module as a string
-//  2. the function accepting the eventa
-//  3. an object with a `fn` property containing the function,
-//     may also have an `options` property which will be the second arg.
-//  4. an array containing any of the above three
-eventa.load(['./local/module'], __dirname)
-eventa.load('published-package')
-eventa.load(function (eventa) { eventa.on('blah', function(){})})
-// this looks odd with both supplied here.
-// imagine you received the function from a require/import call.
-// or, imagine the options are provided to you from elsewhere.
-eventa.load({
-  fn: function (eventa, options) { /* blah */ },
-  options: { some:'options object'}
+// see the 'Usage: load()' section for a complete example set.
+
+// 3. waitFor()
+// Listens to all specified events.
+// Stores the args provided by the events.
+// When all events have occurred, call the provided listener with them all.
+// The args will be in the same order as the event names provided.
+// Default expects each event emits a single argument.
+eventa.waitFor(['a', 'b', 'c'], function (a, b, c) {
+  // now you have all the event results...
 })
 
-// 3. forward()
-// communicate between emitters.
-// when an event is emitted on the eventa, emit it on a different emitter.
-// optionally with a different event name.
+// If any event emits more than one argument, set `many` option:
+eventa.waitFor(['a', 'b', 'c'], function (a, b, c) {
+  // now you have all the event results...
+  // if any of the events had multiple arguments then their
+  // var is an array containing those args.
+}, {many:true})
+
+// 4. forward()
 // this will forward 'some event' to `anotherEmitter` as 'diff event'.
 // the third param is optional. Leave it out and the same event name is used.
 // Note the order: event name, emitter, alt name.
-// "forwarding" forwards an eventa event to the other emitter.
 eventa.forward('some event', anotherEmitter, 'diff event')
 
-// 4. watch()
+// 5. watch()
 // communicate between emitters.
 // this is the opposite of forward().
 // when an event is emitted on another emitter the eventa will emit it as well,
@@ -113,15 +177,17 @@ eventa.forward('some event', anotherEmitter, 'diff event')
 // It's different than forward(), opposite, because they are opposites.
 // "watch" listens to another emitter for some event to use.
 eventa.watch(anotherEmitter, 'for some event', null, 'diff event')
+
 // this will cause the eventa to emit the event with those args.
 eventa.watch(anotherEmitter, 'for some event', function(arg1, arg2) {
   return [ arg1.someProp, arg2.someOtherProp, 'something else']
 })
+
 // these return a handle object with a remove() function:
 var handle = eventa.watch(someEmitter, 'some event')
 handle.remove()
 
-// 5. watchError()
+// 6. watchError()
 // a special version of watch().
 // it accepts only two args to handle watching 'error' events.
 //   1. the other emitter to watch
@@ -132,7 +198,7 @@ handle.remove()
 // also returns a handle with a remove() function.
 eventa.watchError(otherEmitter, 'some error message')
 
-// 6. accept()
+// 7. accept()
 // returns a function to use in place of callbacks.
 // specify names in an array which correspond to the args it may receive.
 // for each name with a corresponding arg eventa will emit an event with that
@@ -140,6 +206,7 @@ eventa.watchError(otherEmitter, 'some error message')
 // it handles the name 'error' special and treats it like watchError() does.
 // when specifying the name 'error' specify a second arg with the error message.
 var acceptor = eventa.accept(['error', 'myfile'], 'failed to read my blah file')
+
 // if readFile() calls it with an error then eventa will emit an 'error'
 // event with an object argument like:
 //   error: 'failed to read my blah file'
@@ -151,11 +218,14 @@ fs.readFile('some/file.ext', 'utf8', acceptor)
 ```
 
 
-## Event Driven
+## Example: Event Driven
 
-A more realistic example of an event-driven app:
+A semi-realistic example of an event-driven app:
+
+TODO: make examples/
 
 ```javascript
+// require and build it in one
 var eventa = require('eventa')()
 
 // add some listeners which report to the console some common info:
@@ -165,17 +235,27 @@ eventa.on('listening', function(event) {
 })
 
 eventa.on('closing', function(event) {
-  console.log('server closing. Reason:',event.reason)
+  console.log('server closing. Reason:', event.reason)
 })
 
 eventa.on('closed', function() { console.log('server closed.') })
 
 eventa.on('client', function(event) {
-  event.object.storedAddress = event.object.address()
-  console.log('client connected',event.object.storedAddress)
+  // client is the event object because we're going to use
+  // eventa's accept() function to emit this 'client'.
+  // it puts the arg into the event object
+  // as property 'object'.
+  var client = event.object
+
+  // store the address() result because it's not
+  // available in the 'end' event
+  client.storedAddress = client.address()
+
+  console.log('client connected', client.storedAddress)
 })
 
 eventa.on('end', function(client) {
+  // we use the storedAddress here
   console.log('client connection ended', client.storedAddress)
 })
 
@@ -186,14 +266,14 @@ eventa.on('end', function(client) {
 // some of their listeners will respond by emitting other events which
 // will be listened for by other modules.
 // load them easily:
-eventa.load(
+eventa.load([
   './db-connect',         // try to connect to a database
   './server-create',      // start a server socket listening
   './client-connections', // handle new client connections
   './decoder',            // decode client data events
   './transformer',        // transform data into documents for the DB
   './db-update'           // update the DB with the new documents
-)
+], __dirname)
 
 // an example of what the above './db-connect' looks like:
 module.exports = function(eventa) {
@@ -209,14 +289,16 @@ module.exports = function(eventa) {
   eventa.on('db', function (event) {
     db = event.object
     function closeDb() { db.close() }
-    eventa.on('error', closeDb, null, 1)
-    eventa.on('closed', closeDb, null, 1)
+    eventa.once('error', closeDb)
+    eventa.once('closed', closeDb)
   })
 }
 
 // an example of './server-create':
 module.exports = function(eventa) {
 
+  // when we have the `db` we know we're ready to start
+  // the server.
   eventa.on('db', function() {
 
     var net = require('net')
@@ -246,6 +328,7 @@ module.exports = function(eventa) {
 // emit 'start' via start() to get everything going.
 // it's possible to listen for dependencies and have other modules
 // emit events containing those dependencies.
+// TODO: put a complete example in an examples/ directory.
 ```
 
 
@@ -253,7 +336,7 @@ module.exports = function(eventa) {
 
 It's possible to build up empty info about events no longer in use with zero listeners.
 
-Fix that by running `eventa.cleanup()`.
+Fix that by running `eventa.cleanup()`. It will recreate the internal arrays anew retaining only event info which has listeners.
 
 Use is very dependent on your application's needs, so, I leave it to you to determine when, if ever, you need to run this.
 
