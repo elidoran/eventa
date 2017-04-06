@@ -123,10 +123,11 @@ Eventa helps build an event-driven app with extra functions.
 1. **start()** - convenience function which emits a `'start'` event. Its purpose is to encourage a focus of setting up event listeners at load including special `'start'` ones to get things going once it's all ready.
 2. **load()** - used to load other packages and local modules into the Eventa. Its purpose is to help split up the event listener providers into separate modules and, allow packages to provide common event listeners.
 3. **waitFor()** - An advanced `on()` which calls the specified listener when **all** the specified events have occurred. It gathers their arguments and provides those to the listener in the same order as the event names are provided. By default it expects each event emits a single argument. To accept multiple arguments provide `{many:true}` as the options arg.
-4. **forward()** - Emit an Eventa event on another emitter. Optionally, with a different event name. The opposite of `watch()`. It has the opposite argument order to watch. Event forwards an event to another emitter, so, `eventa.forward('event', emitter, ...)`. A "handle" is returned with a `remove()` function to remove the forward.
-5. **watch()** - Emit another emitter's event on the Eventa. Optionally, with a different event name. The opposite of `forward()`. It has the opposite argument order to forward. Event watches another emitter for an event, so, `eventa.watch(emitter, 'event', ...)`. A "handle" is returned with a `remove()` function to remove the watcher. The third argument accepts a function to call with the args from the event listener. It allows creating an array of arguments to provide to the watch's event listener. Essentially, changing the other emitter's event arguments into ones of your own.
+4. **forward()** - Emit an Eventa event on another emitter. Optionally, with a different event name. The opposite of `watch()`. It has the opposite argument order to watch. Eventa forwards an event to another emitter, so, `eventa.forward('event', emitter, ...)`. A "handle" is returned with a `remove()` function to remove the forward.
+5. **watch()** - Emit another emitter's event on the Eventa. Optionally, with a different event name. The opposite of `forward()`. It has the opposite argument order to forward. Eventa watches another emitter for an event, so, `eventa.watch(emitter, 'event', ...)`. A "handle" is returned with a `remove()` function to remove the watcher. The third argument accepts a function to call with the args from the event listener. It allows creating an array of arguments to provide to the watch's event listener. Essentially, changing the other emitter's event arguments into ones of your own.
 6. **watchError()** - A special case of `watch()` for `'error'` events. Specify the emitter to watch and an error message to use. It expects the error will be emitted with a single error argument. It will emit on Eventa with a single argument as well. It will have an `error` property containing the error message specified to `watchError()` and, an `Error` property with the error object provided to the original listener.
 7. **accept** - Provides a callback function which will emit each argument as an event using the name specified in the array. The order of the names is used to match them to the arguments. Use this to have it emit the usual error or result arguments with custom names. If the name `'error'` is used then it receives the same treatment as in `watchError()` to produce an object with both `'error'` and `'Error'` properties.
+
 
 ```javascript
 // 1. start()
@@ -157,26 +158,29 @@ eventa.waitFor(['a', 'b', 'c'], function (a, b, c) {
 }, {many:true})
 
 // 4. forward()
-// this will forward 'some event' to `anotherEmitter` as 'diff event'.
+// communicate between emitters.
+// the opposite of watch().
+// this will emit an event on the other emitter, optionally with different name.
 // the third param is optional. Leave it out and the same event name is used.
 // Note the order: event name, emitter, alt name.
+// Think of it as:
+//   "forward 'some event' to anotherEmitter as 'diff event'"
 eventa.forward('some event', anotherEmitter, 'diff event')
 
 // 5. watch()
 // communicate between emitters.
-// this is the opposite of forward().
+// the opposite of forward().
 // when an event is emitted on another emitter the eventa will emit it as well,
 // optionally with a different event name. Without it the same name is used.
 // third argument is a function which receives the event arguments and
 // should return an array of arguments to use when re-emitting the event
 // on eventa.
-// for example, this is useful when a simple notification event on
-// a different emitter is a reason to emit your own event with different
-// args. Such as a socket 'end' event leading to emitting an event
-// to tell something else what to do now with info about that client.
+// for example, it's useful when a simple notification event on
+// a different emitter would benefit from some objects available where
+// you are registering the eventa.watch().
 // Note the order: other emitter, event name, creator, alt name.
-// It's different than forward(), opposite, because they are opposites.
-// "watch" listens to another emitter for some event to use.
+// Think of it as:
+//   "watch anotherEmitter 'for some event' and emit with 'these args' as 'diff event'"
 eventa.watch(anotherEmitter, 'for some event', null, 'diff event')
 
 // this will cause the eventa to emit the event with those args.
@@ -192,8 +196,8 @@ handle.remove()
 // a special version of watch().
 // it accepts only two args to handle watching 'error' events.
 //   1. the other emitter to watch
-//   2. the error message to provide with re-emitted errorMessage
-// the re-emit on eventa is an object with:
+//   2. the error message to provide with re-emitted error
+// the re-emit on eventa is a single argument object with:
 //   1. 'error' property containing the message given to watchError()
 //   2. 'Error' property containing the error arg the other emitter sent
 // also returns a handle with a remove() function.
@@ -206,7 +210,10 @@ eventa.watchError(otherEmitter, 'some error message')
 // name and an object with the property 'object' containing the arg.
 // it handles the name 'error' special and treats it like watchError() does.
 // when specifying the name 'error' specify a second arg with the error message.
-var acceptor = eventa.accept(['error', 'myfile'], 'failed to read my blah file')
+var acceptor = eventa.accept(
+  [ 'error', 'myfile' ],
+  'failed to read my blah file'
+)
 
 // if readFile() calls it with an error then eventa will emit an 'error'
 // event with an object argument like:
@@ -229,10 +236,11 @@ TODO: make examples/
 // require and build it in one
 var eventa = require('eventa')()
 
-// add some listeners which report to the console some common info:
+// add some listeners which report to the console some common info.
+// these could just as easily use a logging module.
 
-eventa.on('listening', function(event) {
-  console.log('server listening on', event.address)
+eventa.on('listening', function(server) {
+  console.log('server listening on', server.address)
 })
 
 eventa.on('closing', function(event) {
@@ -242,10 +250,9 @@ eventa.on('closing', function(event) {
 eventa.on('closed', function() { console.log('server closed.') })
 
 eventa.on('client', function(event) {
-  // client is the event object because we're going to use
+  // client is `event.object` because we're going to use
   // eventa's accept() function to emit this 'client'.
-  // it puts the arg into the event object
-  // as property 'object'.
+  // it puts the arg into the event as 'object'.
   var client = event.object
 
   // store the address() result because it's not
@@ -284,7 +291,9 @@ module.exports = function(eventa) {
     var mongo = require('mongodb').MongoClient
       , url = process.env.MONGO_URL || 'mongodb://localhost:3001/somename'
 
-    mongo.connect(url, eventa.accept(['error', 'db']))
+    mongo.connect(url, eventa.accept(
+      ['error', 'db'], 'error connecting to database'
+    ))
   })
 
   eventa.on('db', function (event) {
@@ -303,7 +312,8 @@ module.exports = function(eventa) {
   eventa.on('db', function() {
 
     var net = require('net')
-      , server = net.createServer(eventor.accept(['client']))
+      , acceptor = eventa.accept(['client'])
+      , server = net.createServer(acceptor)
       , port = process.env.LISTEN_PORT || 4321
       , host = process.env.LISTEN_HOST || 'localhost'
 
@@ -325,10 +335,12 @@ module.exports = function(eventa) {
 // I think you get the idea.
 // Write focused functions as listeners.
 // put related listeners/emitters in a module.
+// for async ops use accept() to emit errors and results.
 // load all the modules.
 // emit 'start' via start() to get everything going.
 // it's possible to listen for dependencies and have other modules
-// emit events containing those dependencies.
+// emit events providing those dependencies.
+// waitFor() helps get multiple dependencies to a single listener.
 // TODO: put a complete example in an examples/ directory.
 ```
 
@@ -355,7 +367,9 @@ That JavaScript file is then used to produce minified and universal module versi
 | ES5  | yes | yes       | **lib/umd.min.js**   |
 
 
-These versions are made available via [unpkg.com](http://unpkg.com/eventa@0.1.0).
+These versions are made available via [unpkg.com](http://unpkg.com/eventa@0.4.0).
+
+Loading via a string will try to use `require()` which, won't work in a browser. So, provide the functions instead. If you have suggestions how to better improve this for using eventa in the browser, please, create an Issue and tell me all about it.
 
 TODO: Test the distribution files and their source maps in a browser.
 
