@@ -4,7 +4,7 @@
   "description": "Simple advanced central event communicator",
   "main": "lib/index.js",
   "files": [
-    "lib"
+    "lib/index.js"
   ],
   "keywords": [
     "eventa",
