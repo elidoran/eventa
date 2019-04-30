@@ -1,6 +1,5 @@
 # eventa
 [![Build Status](https://travis-ci.org/elidoran/eventa.svg?branch=master)](https://travis-ci.org/elidoran/eventa)
-[![Dependency Status](https://gemnasium.com/elidoran/eventa.png)](https://gemnasium.com/elidoran/eventa)
 [![npm version](https://badge.fury.io/js/eventa.svg)](http://badge.fury.io/js/eventa)
 [![Coverage Status](https://coveralls.io/repos/github/elidoran/eventa/badge.svg?branch=master)](https://coveralls.io/github/elidoran/eventa?branch=master)
 
@@ -24,10 +23,10 @@ npm install eventa --save
 
 ```javascript
 // package returns a builder function
-var buildEventa = require('eventa')
+const buildEventa = require('eventa')
 
 // build it plain:
-var eventa = buildEventa()
+const eventa = buildEventa()
 ```
 
 Provide `load()` arguments to the builder as a convenience. It accepts all forms of arguments exactly like `load()`.
@@ -88,13 +87,13 @@ eventa.emit('someEvent', 'blah1', {blah:'two'})
 
 // on() and once() return an object with a `remove` function
 // to remove the listener.
-var handle = eventa.on('event name', function() {})
+const handle = eventa.on('event name', function() {})
 
 // then you can remove it at any time:
 handle.remove()
 
 // you can even do that while inside the listener:
-var theHandle = eventa.on('name', function() { theHandle.remove() })
+const theHandle = eventa.on('name', function() { theHandle.remove() })
 
 // instead of a once() function, you can specify the number of times
 // a listener is allowed to run. (null is context)
@@ -110,7 +109,7 @@ eventa.once('one time', function(){})
 // such as a class instance.
 // this avoids doing:  thing.method.bind(thing)
 // and the extra bind wrapper function call.
-var thing = new Thing
+const thing = new Thing
 eventa.on('e', thing.method, thing)
 eventa.once('e', thing.method, thing)
 ```
@@ -210,7 +209,7 @@ eventa.watchError(otherEmitter, 'some error message')
 // name and an object with the property 'object' containing the arg.
 // it handles the name 'error' special and treats it like watchError() does.
 // when specifying the name 'error' specify a second arg with the error message.
-var acceptor = eventa.accept(
+const acceptor = eventa.accept(
   [ 'error', 'myfile' ],
   'failed to read my blah file'
 )
@@ -234,7 +233,7 @@ TODO: make examples/
 
 ```javascript
 // require and build it in one
-var eventa = require('eventa')()
+const eventa = require('eventa')()
 
 // add some listeners which report to the console some common info.
 // these could just as easily use a logging module.
@@ -253,7 +252,7 @@ eventa.on('client', function(event) {
   // client is `event.object` because we're going to use
   // eventa's accept() function to emit this 'client'.
   // it puts the arg into the event as 'object'.
-  var client = event.object
+  const client = event.object
 
   // store the address() result because it's not
   // available in the 'end' event
@@ -288,8 +287,8 @@ module.exports = function(eventa) {
 
   eventa.on('start', function() {
 
-    var mongo = require('mongodb').MongoClient
-      , url = process.env.MONGO_URL || 'mongodb://localhost:3001/somename'
+    const mongo = require('mongodb').MongoClient
+    const url = process.env.MONGO_URL || 'mongodb://localhost:3001/somename'
 
     mongo.connect(url, eventa.accept(
       ['error', 'db'], 'error connecting to database'
@@ -297,7 +296,7 @@ module.exports = function(eventa) {
   })
 
   eventa.on('db', function (event) {
-    db = event.object
+    const db = event.object
     function closeDb() { db.close() }
     eventa.once('error', closeDb)
     eventa.once('closed', closeDb)
@@ -311,11 +310,11 @@ module.exports = function(eventa) {
   // the server.
   eventa.on('db', function() {
 
-    var net = require('net')
-      , acceptor = eventa.accept(['client'])
-      , server = net.createServer(acceptor)
-      , port = process.env.LISTEN_PORT || 4321
-      , host = process.env.LISTEN_HOST || 'localhost'
+    const net = require('net')
+    const acceptor = eventa.accept(['client'])
+    const server = net.createServer(acceptor)
+    const port = process.env.LISTEN_PORT || 4321
+    const host = process.env.LISTEN_HOST || 'localhost'
 
     eventa.watchError(server, 'server socket error')
     eventa.watch(server, 'close', null, 'closed')
