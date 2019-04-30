@@ -32,4 +32,3 @@ coverage/
 
 # generated build files:
 lib/*.map
-lib/*.js
