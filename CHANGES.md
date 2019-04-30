@@ -1,3 +1,19 @@
+0.5.0 - Released 2019/04/30
+
+1. switch from CS to JS for main file and UMD generator script/template.
+2. update deps
+3. swap scripts using CS for those using JS
+4. swap coffeelint for eslint
+5. now we can do coverage via Travis CI
+6. drop node 4, add node 8-12 (evens)
+7. change main file to use ES6 `const` and `let`
+8. add 2019 to LICENSE
+9. stop ignoring all lib/*.js and only ignore umd/map files
+10. add one new test for 100% code coverage
+11. remove defunct gemnasium badge from README
+12. update README examples to use const
+
+
 0.4.0 - Released 2017/04/05
 
 1. added `waitFor()`
