@@ -12,6 +12,7 @@
 10. add one new test for 100% code coverage
 11. remove defunct gemnasium badge from README
 12. update README examples to use const
+13. disabling UMD stuff for now.
 
 
 0.4.0 - Released 2017/04/05
