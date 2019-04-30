@@ -1,6 +1,6 @@
 assert = require 'assert'
 {EventEmitter} = require 'events'
-buildEventa = require '../../lib/index.coffee'
+buildEventa = require '../../lib/index.js'
 
 # helper to look into the eventa object
 firstListeners = (eventa) -> eventa._info[0].listeners
@@ -30,11 +30,15 @@ describe 'test eventa', ->
   it 'should call an added listener via emit()', ->
     eventa = buildEventa()
     called = false
+    calledArg = null
     testObject = test:true
-    fn = (eventObject) -> called = eventObject
+    fn = (eventObject) ->
+      calledArg = eventObject
+      called = true
     eventa.on 'test emit', fn
     eventa.emit 'test emit', testObject
-    assert.strictEqual called, testObject
+    assert.strictEqual called, true
+    assert.strictEqual calledArg, testObject
 
 
   it 'should have a listener until remove() is called', ->
@@ -178,6 +182,16 @@ describe 'test eventa', ->
     eventa.load ->
     options = some:'options'
     eventa.load '../helpers/options.js', options, __dirname
+    receivedOptions = require('../helpers/options.js').options
+    assert.strictEqual receivedOptions, options
+
+
+  it 'will use only options and default dir \'.\' for load()', ->
+
+    eventa = buildEventa()
+    eventa.load ->
+    options = some:'options'
+    eventa.load './test/helpers/options.js', options
     receivedOptions = require('../helpers/options.js').options
     assert.strictEqual receivedOptions, options
 
