@@ -38,7 +38,8 @@
     "coverage": "istanbul cover -x 'build/**' _mocha -- --require coffeescript/register -R spec test/lib/*.coffee",
     "umd": "node build/umd.js",
     "preumd-min": "npm run umd",
-    "umd-min": "cd lib && uglifyjs umd.js --compress --mangle --source-map umd.min.js.map --in-source-map umd.js.map --output umd.min.js"
+    "umd-min": "cd lib && uglifyjs umd.js --compress --mangle --source-map umd.min.js.map --in-source-map umd.js.map --output umd.min.js",
+    "prepublish": "npm run umd-min"
   },
   "repository": {
     "type": "git",
