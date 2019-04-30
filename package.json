@@ -2,8 +2,6 @@
   "name": "eventa",
   "version": "0.4.0",
   "description": "Simple advanced central event communicator",
-  "unpkg": "lib/umd.min.js",
-  "browser": "lib/umd.min.js",
   "main": "lib/index.js",
   "files": [
     "lib"
@@ -39,7 +37,7 @@
     "umd": "node build/umd.js",
     "preumd-min": "npm run umd",
     "umd-min": "cd lib && uglifyjs umd.js --compress --mangle --source-map umd.min.js.map --in-source-map umd.js.map --output umd.min.js",
-    "prepublish": "npm run umd-min"
+    "prepublish": "echo 'skipping: npm run umd-min'"
   },
   "repository": {
     "type": "git",
